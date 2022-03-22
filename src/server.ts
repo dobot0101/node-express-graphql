@@ -1,43 +1,55 @@
-import { ApolloServer } from 'apollo-server-express';
-import { ApolloServerPluginDrainHttpServer, gql } from 'apollo-server-core';
 import express from 'express';
-import http from 'http';
+import { buildSchema } from 'graphql';
+import { graphqlHTTP } from 'express-graphql';
 
-// The GraphQL schema
-const typeDefs = gql`
+// Construct a schema, using GraphQL schema language
+const schema = buildSchema(`
   type Query {
-    "A simple type for getting started!"
-    hello: String
-    name: String!
+    quoteOfTheDay: String
+    random: Float!
+    rollThreeDice: [Int]
+    rollDice(numDice: Int!, numSides: Int): [Int]
   }
-`;
+`);
 
-// A map of functions which return data for the schema.
-const resolvers = {
-  Query: {
-    hello: () => null,
-    name: () => '이도현'
+// The rootValue provides a resolver function for each API endpoint
+const rootValue = {
+  quoteOfTheDay: () => {
+    return Math.random() < 0.5 ? 'Take it easy' : 'Salvation lies within';
+  },
+  random: () => {
+    return Math.random();
+  },
+  rollThreeDice: () => {
+    return [1, 2, 3].map(_ => 1 + Math.floor(Math.random() * 6));
+  },
+  rollDice: ({
+    numDice,
+    numSides,
+  }: {
+    numDice: number;
+    numSides: number;
+  }): number[] => {
+    const output = [];
+    for (let i = 0; i < numDice; i++) {
+      output.push(1 + Math.floor(Math.random() * (numSides || 6)));
+    }
+    return output;
   },
 };
 
-async function startApolloServer(typeDefs: any, resolvers: any) {
-  const app = express();
+const app = express();
+app.use(
+  '/graphql',
+  graphqlHTTP({
+    schema,
+    rootValue,
+    graphiql: true,
+  })
+);
 
-  const httpServer = http.createServer(app);
+const port = process.env.PORT || 4000;
 
-  const server = new ApolloServer({
-    typeDefs,
-    resolvers,
-    plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
-  });
-
-  await server.start();
-
-  server.applyMiddleware({ app });
-
-  await new Promise(resolve => httpServer.listen({ port: 4000 }, resolve));
-
-  console.log(`🚀 Server ready at http://localhost:4000${server.graphqlPath}`);
-}
-
-startApolloServer(typeDefs, resolvers);
+app.listen(port, () => {
+  console.log(`Running a GraphQL API server at localhost:${port}/graphql`);
+});
