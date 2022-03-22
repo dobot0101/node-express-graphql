@@ -3,7 +3,7 @@ Node.js express 기반의 GraphQL API 개발 학습
 
 
 ### 사용 기술
-Node.js, GraphQL, apollo-server-express, Typescript
+Node.js express, GraphQL, Typescript
 
 ### 환경설정 및 시작
 1. `npm install` 실행
