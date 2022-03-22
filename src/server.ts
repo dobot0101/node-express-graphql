@@ -4,41 +4,46 @@ import { graphqlHTTP } from 'express-graphql';
 
 // Construct a schema, using GraphQL schema language
 const schema = buildSchema(`
+  type RandomDie {
+    numSides: Int!
+    rollOnce: Int!
+    roll(numRolls: Int!): [Int]
+  }
+
   type Query {
-    quoteOfTheDay: String
-    random: Float!
-    rollThreeDice: [Int]
-    rollDice(numDice: Int!, numSides: Int): [Int]
+    getDie(numSides: Int): RandomDie
   }
 `);
 
-// The rootValue provides a resolver function for each API endpoint
-const rootValue = {
-  quoteOfTheDay: () => {
-    return Math.random() < 0.5 ? 'Take it easy' : 'Salvation lies within';
-  },
-  random: () => {
-    return Math.random();
-  },
-  rollThreeDice: () => {
-    return [1, 2, 3].map(_ => 1 + Math.floor(Math.random() * 6));
-  },
-  rollDice: ({
-    numDice,
-    numSides,
-  }: {
-    numDice: number;
-    numSides: number;
-  }): number[] => {
+// This class implements the RandomDie GraphQL type
+class RandomDie {
+  numSides;
+  constructor(numSides: number) {
+    this.numSides = numSides;
+  }
+
+  rollOnce(): number {
+    return 1 + Math.floor(Math.random() * this.numSides);
+  }
+
+  roll({ numRolls }: { numRolls: number }): number[] {
     const output = [];
-    for (let i = 0; i < numDice; i++) {
-      output.push(1 + Math.floor(Math.random() * (numSides || 6)));
+    for (let i = 0; i < numRolls; i++) {
+      output.push(this.rollOnce());
     }
     return output;
+  }
+}
+
+// The rootValue provides a resolver function for each API endpoint
+const rootValue = {
+  getDie: ({ numSides }: { numSides: number }): RandomDie => {
+    return new RandomDie(numSides || 6);
   },
 };
 
 const app = express();
+
 app.use(
   '/graphql',
   graphqlHTTP({
