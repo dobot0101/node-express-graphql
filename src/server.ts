@@ -4,41 +4,72 @@ import { graphqlHTTP } from 'express-graphql';
 
 // Construct a schema, using GraphQL schema language
 const schema = buildSchema(`
-  type RandomDie {
-    numSides: Int!
-    rollOnce: Int!
-    roll(numRolls: Int!): [Int]
+  type Mutation {
+    createMessage(input: MessageInput): Message
+    updateMessage(id: ID!, input: MessageInput): Message
   }
 
-  type Query {
-    getDie(numSides: Int): RandomDie
+  type Query { 
+    getMessage(id: ID!): Message
+  }
+
+  type Message {
+    id: ID!
+    content: String
+    author: String
+  }
+
+  input MessageInput {
+    content: String
+    author: String
   }
 `);
 
-// This class implements the RandomDie GraphQL type
-class RandomDie {
-  numSides;
-  constructor(numSides: number) {
-    this.numSides = numSides;
-  }
+class Message {
+  public id: string;
+  public author: string;
+  public content: string;
 
-  rollOnce(): number {
-    return 1 + Math.floor(Math.random() * this.numSides);
-  }
-
-  roll({ numRolls }: { numRolls: number }): number[] {
-    const output = [];
-    for (let i = 0; i < numRolls; i++) {
-      output.push(this.rollOnce());
-    }
-    return output;
+  constructor(id: string, { author, content }: MessageInputType) {
+    this.id = id;
+    this.content = content;
+    this.author = author;
   }
 }
 
+type MessageType = {
+  [name: string]: Message;
+};
+
+type MessageInputType = {
+  content: string;
+  author: string;
+};
+
+const fakeDatabase: MessageType = {};
 // The rootValue provides a resolver function for each API endpoint
 const rootValue = {
-  getDie: ({ numSides }: { numSides: number }): RandomDie => {
-    return new RandomDie(numSides || 6);
+  createMessage: ({ input }: { [name: string]: MessageInputType }) => {
+    var id = require('crypto').randomBytes(10).toString('hex');
+    const message = new Message(id, input);
+    fakeDatabase[id] = message;
+    return message;
+  },
+  updateMessage: ({ id, input }: { id: string; input: MessageInputType }) => {
+    if (!fakeDatabase[id]) {
+      throw new Error(`no message exists with id: ${id}`);
+    }
+    const message = fakeDatabase[id];
+    message.author = input.author;
+    message.content = input.content;
+    fakeDatabase[id] = message;
+    return message;
+  },
+  getMessage: (id: string) => {
+    if (!fakeDatabase[id]) {
+      throw new Error(`no message exists with id: ${id}`);
+    }
+    return fakeDatabase[id];
   },
 };
 
