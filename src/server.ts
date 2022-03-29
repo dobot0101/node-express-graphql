@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import { buildSchema } from 'graphql';
 import { graphqlHTTP } from 'express-graphql';
 
@@ -11,6 +11,7 @@ const schema = buildSchema(`
 
   type Query { 
     getMessage(id: ID!): Message
+    ip: String
   }
 
   type Message {
@@ -24,6 +25,11 @@ const schema = buildSchema(`
     author: String
   }
 `);
+
+const loggingMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  console.log(`ip: ${req.ip}`);
+  next();
+};
 
 class Message {
   public id: string;
@@ -49,6 +55,9 @@ type MessageInputType = {
 const fakeDatabase: MessageType = {};
 // The rootValue provides a resolver function for each API endpoint
 const rootValue = {
+  ip: (args: any, request: any) => {
+    return request.ip;
+  },
   createMessage: ({ input }: { [name: string]: MessageInputType }) => {
     var id = require('crypto').randomBytes(10).toString('hex');
     const message = new Message(id, input);
@@ -74,7 +83,7 @@ const rootValue = {
 };
 
 const app = express();
-
+app.use(loggingMiddleware);
 app.use(
   '/graphql',
   graphqlHTTP({
